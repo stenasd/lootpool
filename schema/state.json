@@ -3,25 +3,55 @@
   "title": "State",
   "type": "object",
   "required": [
-    "count",
-    "owner"
+    "admin",
+    "code_hash",
+    "items",
+    "nft"
   ],
   "properties": {
-    "count": {
-      "type": "integer",
-      "format": "int32"
+    "admin": {
+      "$ref": "#/definitions/HumanAddr"
     },
-    "owner": {
-      "$ref": "#/definitions/CanonicalAddr"
+    "code_hash": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Item"
+      }
+    },
+    "nft": {
+      "$ref": "#/definitions/HumanAddr"
     }
   },
   "definitions": {
-    "Binary": {
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+    "HumanAddr": {
       "type": "string"
     },
-    "CanonicalAddr": {
-      "$ref": "#/definitions/Binary"
+    "Item": {
+      "type": "object",
+      "required": [
+        "name",
+        "tokenid",
+        "tradeReady",
+        "value"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "tokenid": {
+          "type": "string"
+        },
+        "tradeReady": {
+          "type": "string"
+        },
+        "value": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
     }
   }
 }

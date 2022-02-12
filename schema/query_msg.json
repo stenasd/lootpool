@@ -5,13 +5,48 @@
     {
       "type": "object",
       "required": [
-        "get_count"
+        "get_settings"
       ],
       "properties": {
-        "get_count": {
+        "get_settings": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "query_account"
+      ],
+      "properties": {
+        "query_account": {
+          "type": "object",
+          "required": [
+            "adress"
+          ],
+          "properties": {
+            "adress": {
+              "$ref": "#/definitions/HumanAddr"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "query_pool"
+      ],
+      "properties": {
+        "query_pool": {
           "type": "object"
         }
       }
     }
-  ]
+  ],
+  "definitions": {
+    "HumanAddr": {
+      "type": "string"
+    }
+  }
 }

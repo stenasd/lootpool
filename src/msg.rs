@@ -1,6 +1,6 @@
 use crate::state::Item;
 use cosmwasm_std::{Binary, HumanAddr};
-use schemars::{schema::Metadata, JsonSchema};
+use schemars::{JsonSchema};
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {

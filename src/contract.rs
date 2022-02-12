@@ -1,4 +1,4 @@
-use crate::controller::{change_currency, creat_item_from_metadata};
+use crate::controller::{change_currency, creat_item_from_metadata, get_buyin_price};
 use crate::msg::{
     HandleAnswer, HandleMsg, IniDataResponse, InitMsg, LootPoolResponse, QueryAccountResponse,
     QueryMsg,
@@ -9,9 +9,12 @@ use cosmwasm_std::{
     HandleResult, HumanAddr, InitResponse, Querier, StdError, StdResult, Storage,
 };
 use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
+//use rand::{RngCore, SeedableRng};
+//use rand_chacha::ChaChaRng;
 use secret_toolkit::snip721::{
-    batch_transfer_nft_msg, nft_info_query, register_receive_nft_msg, Metadata,
+    batch_transfer_nft_msg, nft_info_query, register_receive_nft_msg, transfer_nft_msg, Metadata,
 };
+use sha2::{Digest, Sha256};
 
 /*
     TODO change so currency is changed for owner of nft and add to pool.
@@ -27,6 +30,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     /*
     let message_sender = &deps.api.canonical_address(&env.message.sender)?;
     save(&mut deps.storage, message_sender.as_slice(), &string)?;*/
+
     let state = State {
         admin: env.message.sender,
         code_hash: msg.code_hash,
@@ -76,13 +80,9 @@ fn query_pool<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
 ) -> StdResult<LootPoolResponse> {
     let state: State = load(&deps.storage, CONFIG_KEY)?;
-    let items = state.items.clone();
-    let mut v: Vec<i32> = state.items.into_iter().map(|x| x.value).rev().collect();
-    v.sort();
-    let median = v.len() / 2;
     Ok(LootPoolResponse {
-        buyin: median as i32,
-        items: items,
+        buyin: get_buyin_price(state.clone()),
+        items: state.items,
     })
 }
 fn query_account<S: Storage, A: Api, Q: Querier>(
@@ -121,20 +121,56 @@ pub fn try_start_lootpool<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
 ) -> HandleResult {
-    let mut messages: Vec<CosmosMsg> = Vec::new();
-
     //get balance check if you can afford
     // randomize array
+    // change balance
     // remove from pool
-    // 
+    // send nft
+    /*let mut state: State = load(&deps.storage, CONFIG_KEY)?;
 
+    let buy_in_price = get_buyin_price(state.clone());
+    let combined_secret: Vec<u8> = 123456u128.to_be_bytes().to_vec();
+    let random_seed: [u8; 32] = Sha256::digest(&combined_secret).into();
+    let mut rng = ChaChaRng::from_seed(random_seed);
+    let itemlen = state.items.len();
+    let dice = (rng.next_u32() % itemlen as u32) as usize;
+    //item that gets removed and nft sent to winner
+    let item = state.items[dice].clone();
+    state.items.swap_remove(dice);
+    let user: Option<User> = may_load(&deps.storage, env.message.sender.to_string().as_bytes())?;
+    let mut acc = user.unwrap_or_else(|| User { currency: 0 });
+    acc.currency = acc.currency - buy_in_price;
+    if acc.currency < 0 {
+        //return Err(StdError::Unauthorized { backtrace: None });
+    }
+    save(&mut deps.storage, CONFIG_KEY, &state)?;
+    save(
+        &mut deps.storage,
+        env.message.sender.to_string().as_bytes(),
+        &acc,
+    )?;
     Ok(HandleResponse {
-        messages,
+        messages: vec![transfer_nft_msg(
+            env.message.sender,
+            item.tokenid.clone(),
+            None,
+            None,
+            256,
+            state.code_hash.clone(),
+            state.nft.clone(),
+        )?],
         log: vec![],
-        data: Some(to_binary(&HandleAnswer::WonItem {
-            item: card_contract.address,
-        })?),
+        data: Some(to_binary(&HandleAnswer::WonItem { item: item })?),
     })
+    */
+    let user: Option<User> = may_load(&mut deps.storage, env.message.sender.to_string().as_bytes())?;
+    let mut acc = user.unwrap_or_else(|| User { currency: 0 });
+    acc.currency += 100;
+    if acc.currency < 0 {
+        return Err(StdError::Unauthorized { backtrace: None });
+    }
+    save(&mut deps.storage, env.message.sender.to_string().as_bytes(), &acc)?;
+    Ok(HandleResponse::default())
 }
 pub fn try_receive<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
@@ -175,16 +211,21 @@ pub fn try_receive<S: Storage, A: Api, Q: Querier>(
     save(&mut deps.storage, CONFIG_KEY, &state)?;
     return Ok(HandleResponse::default());
 }
+
+
+
 pub fn change_funds<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     ammount: i32,
 ) -> StdResult<HandleResponse> {
-    change_currency(
-        &mut deps.storage,
-        env.message.sender.as_str().to_string(),
-        ammount,
-    );
+    let user: Option<User> = may_load(&mut deps.storage, env.message.sender.to_string().as_bytes())?;
+    let mut acc = user.unwrap_or_else(|| User { currency: 0 });
+    acc.currency += ammount;
+    if acc.currency < 0 {
+        return Err(StdError::Unauthorized { backtrace: None });
+    }
+    save(&mut deps.storage, env.message.sender.to_string().as_bytes(), &acc)?;
     Ok(HandleResponse::default())
 }
 

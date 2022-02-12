@@ -3,12 +3,20 @@
   "title": "InitMsg",
   "type": "object",
   "required": [
-    "count"
+    "address",
+    "code_hash"
   ],
   "properties": {
-    "count": {
-      "type": "integer",
-      "format": "int32"
+    "address": {
+      "$ref": "#/definitions/HumanAddr"
+    },
+    "code_hash": {
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "HumanAddr": {
+      "type": "string"
     }
   }
 }

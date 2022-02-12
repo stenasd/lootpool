@@ -5,33 +5,94 @@
     {
       "type": "object",
       "required": [
-        "increment"
+        "add_funds"
       ],
       "properties": {
-        "increment": {
-          "type": "object"
-        }
-      }
-    },
-    {
-      "type": "object",
-      "required": [
-        "reset"
-      ],
-      "properties": {
-        "reset": {
+        "add_funds": {
           "type": "object",
           "required": [
-            "count"
+            "ammount"
           ],
           "properties": {
-            "count": {
+            "ammount": {
               "type": "integer",
               "format": "int32"
             }
           }
         }
       }
+    },
+    {
+      "type": "object",
+      "required": [
+        "batch_receive_nft"
+      ],
+      "properties": {
+        "batch_receive_nft": {
+          "type": "object",
+          "required": [
+            "from",
+            "sender",
+            "token_ids"
+          ],
+          "properties": {
+            "from": {
+              "description": "previous owner of the NFTs",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/HumanAddr"
+                }
+              ]
+            },
+            "msg": {
+              "description": "msg specified when sending",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Binary"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sender": {
+              "description": "address that sent the NFTs",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/HumanAddr"
+                }
+              ]
+            },
+            "token_ids": {
+              "description": "list of NFTs sent from the previous owner",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "start_loot_pool"
+      ],
+      "properties": {
+        "start_loot_pool": {
+          "type": "object"
+        }
+      }
     }
-  ]
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "type": "string"
+    },
+    "HumanAddr": {
+      "type": "string"
+    }
+  }
 }
