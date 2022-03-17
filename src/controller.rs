@@ -1,5 +1,5 @@
 use crate::msg::{HandleMsg, IniDataResponse, InitMsg, QueryAccountResponse, QueryMsg};
-use crate::state::{load, may_load, remove, save, Item, State, User, PREFIX_VIEW_KEY, self};
+use crate::state::{self, load, may_load, remove, save, Item, State, User, PREFIX_VIEW_KEY};
 use cosmwasm_std::{StdError, StdResult, Storage};
 use secret_toolkit::snip721::Metadata;
 pub const CONFIG_KEY: &[u8] = b"config";
@@ -7,10 +7,11 @@ pub fn change_currency<S: Storage>(storage: &mut S, sender: String, amm: i32) ->
     let user: Option<User> = may_load(storage, sender.as_bytes())?;
     let mut acc = user.unwrap_or_else(|| User { currency: 0 });
     acc.currency += amm;
-    if acc.currency < 0 {
+    if acc.currency >= 0 {
+        save(storage, sender.as_bytes(), &acc)?;
+    } else {
         return Err(StdError::Unauthorized { backtrace: None });
     }
-    save(storage, sender.as_bytes(), &acc)?;
     Ok(())
 }
 
@@ -38,10 +39,25 @@ pub fn creat_item_from_metadata<S: Storage>(
     return item;
 }
 
-pub fn get_buyin_price(state:State) -> i32 {
+pub fn get_buyin_price2(state: State) -> i32 {
     let items = state.items.clone();
     //let mut v: Vec<i32> = state.items.into_iter().map(|x| x.value).rev().collect();
     let mut vec_key: Vec<i32> = items.into_iter().map(|p| p.value).collect();
     vec_key.sort();
-    return vec_key[vec_key.len()/2];
+    return vec_key[vec_key.len() / 2];
+}
+pub fn get_buyin_price(state: State) -> i32 {
+    let mut avg: i32;
+    let mut sum: i32 = 0;
+    let items = state.items.clone();
+    //let mut v: Vec<i32> = state.items.into_iter().map(|x| x.value).rev().collect();
+    let mut vec_key: Vec<i32> = items.into_iter().map(|p| p.value).collect();
+
+    for x in &vec_key {
+        sum = sum + x;
+    }
+    avg = sum as i32 / vec_key.len() as i32;
+    //to ensure its allways rounded up
+    avg = avg + 1;
+    return avg as i32;
 }

@@ -9,8 +9,8 @@ use cosmwasm_std::{
     HandleResult, HumanAddr, InitResponse, Querier, StdError, StdResult, Storage,
 };
 use cosmwasm_storage::{PrefixedStorage, ReadonlyPrefixedStorage};
-//use rand::{RngCore, SeedableRng};
-//use rand_chacha::ChaChaRng;
+use rand::{RngCore, SeedableRng};
+use rand_chacha::ChaChaRng;
 use secret_toolkit::snip721::{
     batch_transfer_nft_msg, nft_info_query, register_receive_nft_msg, transfer_nft_msg, Metadata,
 };
@@ -121,13 +121,9 @@ pub fn try_start_lootpool<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
 ) -> HandleResult {
-    //get balance check if you can afford
-    // randomize array
-    // change balance
-    // remove from pool
-    // send nft
-    /*let mut state: State = load(&deps.storage, CONFIG_KEY)?;
-
+    //negativ balance
+    //1 loot left
+    let mut state: State = load(&deps.storage, CONFIG_KEY)?;
     let buy_in_price = get_buyin_price(state.clone());
     let combined_secret: Vec<u8> = 123456u128.to_be_bytes().to_vec();
     let random_seed: [u8; 32] = Sha256::digest(&combined_secret).into();
@@ -140,15 +136,21 @@ pub fn try_start_lootpool<S: Storage, A: Api, Q: Querier>(
     let user: Option<User> = may_load(&deps.storage, env.message.sender.to_string().as_bytes())?;
     let mut acc = user.unwrap_or_else(|| User { currency: 0 });
     acc.currency = acc.currency - buy_in_price;
-    if acc.currency < 0 {
-        //return Err(StdError::Unauthorized { backtrace: None });
+    if acc.currency >= 0 {
+        save(
+            &mut deps.storage,
+            env.message.sender.to_string().as_bytes(),
+            &acc,
+        )?;
+        save(&mut deps.storage, CONFIG_KEY, &state)?;
+        save(
+            &mut deps.storage,
+            env.message.sender.to_string().as_bytes(),
+            &acc,
+        )?;
+    } else {
+        return Err(StdError::Unauthorized { backtrace: None });
     }
-    save(&mut deps.storage, CONFIG_KEY, &state)?;
-    save(
-        &mut deps.storage,
-        env.message.sender.to_string().as_bytes(),
-        &acc,
-    )?;
     Ok(HandleResponse {
         messages: vec![transfer_nft_msg(
             env.message.sender,
@@ -162,15 +164,6 @@ pub fn try_start_lootpool<S: Storage, A: Api, Q: Querier>(
         log: vec![],
         data: Some(to_binary(&HandleAnswer::WonItem { item: item })?),
     })
-    */
-    let user: Option<User> = may_load(&mut deps.storage, env.message.sender.to_string().as_bytes())?;
-    let mut acc = user.unwrap_or_else(|| User { currency: 0 });
-    acc.currency += 100;
-    if acc.currency < 0 {
-        return Err(StdError::Unauthorized { backtrace: None });
-    }
-    save(&mut deps.storage, env.message.sender.to_string().as_bytes(), &acc)?;
-    Ok(HandleResponse::default())
 }
 pub fn try_receive<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
@@ -212,20 +205,24 @@ pub fn try_receive<S: Storage, A: Api, Q: Querier>(
     return Ok(HandleResponse::default());
 }
 
-
-
 pub fn change_funds<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     ammount: i32,
 ) -> StdResult<HandleResponse> {
-    let user: Option<User> = may_load(&mut deps.storage, env.message.sender.to_string().as_bytes())?;
+    let user: Option<User> =
+        may_load(&mut deps.storage, env.message.sender.to_string().as_bytes())?;
     let mut acc = user.unwrap_or_else(|| User { currency: 0 });
     acc.currency += ammount;
-    if acc.currency < 0 {
+    if acc.currency >= 0 {
+        save(
+            &mut deps.storage,
+            env.message.sender.to_string().as_bytes(),
+            &acc,
+        )?;
+    } else {
         return Err(StdError::Unauthorized { backtrace: None });
     }
-    save(&mut deps.storage, env.message.sender.to_string().as_bytes(), &acc)?;
     Ok(HandleResponse::default())
 }
 
@@ -268,12 +265,12 @@ mod tests {
         let _res = init(&mut deps, env, msg).unwrap();
 
         let auth_env = mock_env("creator", &coins(2, "token"));
-        let msg = HandleMsg::AddFunds { ammount: 11 };
+        let msg = HandleMsg::AddFunds { ammount: 10 };
         let _res = handle(&mut deps, auth_env, msg).unwrap();
 
         let auth_env = mock_env("creator", &coins(2, "token"));
-        //let msg = HandleMsg::AddFunds { ammount: 0 };
-        //let _res = handle(&mut deps, auth_env, msg).unwrap();
+        let msg = HandleMsg::AddFunds { ammount: -9 };
+        let _res = handle(&mut deps, auth_env, msg).unwrap();
 
         let res = query(
             &deps,
@@ -283,7 +280,7 @@ mod tests {
         )
         .unwrap();
         let value: QueryAccountResponse = from_binary(&res).unwrap();
-        assert_eq!(11, value.funds);
+        assert_eq!(1, value.funds);
     }
     #[test]
     fn creat_nft() {
